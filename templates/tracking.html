@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Pelacakan Alumni - Sistem Pelacakan Alumni{% endblock %}
+
+{% block content %}
+<div class="card shadow p-4 mb-4">
+    <h2 class="mb-4 text-center">Pelacakan Alumni</h2>
+    <p class="mb-4 text-center">Sistem akan melakukan pencarian alumni dari berbagai sumber publik.</p>
+    <div class="d-flex justify-content-center mb-4">
+        <a href="/jalankan_pelacakan" class="btn btn-success">Jalankan Pelacakan</a>
+    </div>
+    <hr>
+    <h3 class="mb-3">Data Alumni</h3>
+    <table class="table table-striped table-bordered">
+        <thead class="table-dark">
+            <tr>
+                <th>Nama</th>
+                <th>Tahun</th>
+                <th>Prodi</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in alumni %}
+            <tr>
+                <td>{{a['nama']}}</td>
+                <td>{{a['tahun']}}</td>
+                <td>{{a['prodi']}}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div class="d-flex justify-content-end mt-3">
+        <a href="/" class="btn btn-secondary">Kembali ke Dashboard</a>
+    </div>
+</div>
+{% endblock %}

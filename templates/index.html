@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Dashboard</h2>
+<p>Prototype sistem pelacakan alumni dari berbagai sumber publik.</p>
+
+<div class="row mt-4">
+
+    <div class="col-md-4">
+        <div class="card p-3">
+            <h5>Kelola Data Alumni</h5>
+            <p>Menambahkan dan mengelola data alumni.</p>
+            <a href="/alumni" class="btn btn-primary">Masuk</a>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card p-3">
+            <h5>Jalankan Pelacakan</h5>
+            <p>Menjalankan proses pencarian alumni.</p>
+            <a href="/tracking" class="btn btn-success">Jalankan</a>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card p-3">
+            <h5>Lihat Hasil</h5>
+            <p>Menampilkan hasil pelacakan alumni.</p>
+            <a href="/hasil" class="btn btn-warning">Lihat</a>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
