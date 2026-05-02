@@ -171,6 +171,7 @@ Pengujian dilakukan secara manual berdasarkan use case utama sistem.
 
 ---
 
-## 👤 Author
+## Akun & Password Login 
 
-**Achmad Rizqy** — [github.com/achmadrizqy](https://github.com/achmadrizqy)
+Username = **user**
+Password = **user**
