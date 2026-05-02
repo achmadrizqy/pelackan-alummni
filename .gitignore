@@ -5,13 +5,24 @@ __pycache__/
 
 # Virtual environments
 venv/
+venv_new/
+.venv/
 env/
 ENV/
-env.bak/
-venv.bak/
 
 # Environment variables
 .env
 
-# SQLite runtime files (optional depending on needs, but usually good to ignore)
+# Database files
+*.db
 *.sqlite3
+
+# Upload & export folders
+uploads/
+exports/
+
+# Kiro spec files (development only)
+.kiro/
+
+# Test files
+test_bootstrap_*.py

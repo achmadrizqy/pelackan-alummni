@@ -1,36 +1,180 @@
 {% extends "base.html" %}
-
-{% block title %}Pelacakan Alumni - Sistem Pelacakan Alumni{% endblock %}
+{% block title %}Tracking Alumni{% endblock %}
 
 {% block content %}
-<div class="card shadow p-4 mb-4">
-    <h2 class="mb-4 text-center">Pelacakan Alumni</h2>
-    <p class="mb-4 text-center">Sistem akan melakukan pencarian alumni dari berbagai sumber publik.</p>
-    <div class="d-flex justify-content-center mb-4">
-        <a href="/jalankan_pelacakan" class="btn btn-success">Jalankan Pelacakan</a>
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">Tracking Alumni</h4>
+        <p class="text-muted mb-0" style="font-size:0.875rem;">
+            Lacak data alumni dari internet menggunakan DuckDuckGo + Grok AI
+        </p>
     </div>
-    <hr>
-    <h3 class="mb-3">Data Alumni</h3>
-    <table class="table table-striped table-bordered">
-        <thead class="table-dark">
-            <tr>
-                <th>Nama</th>
-                <th>Tahun</th>
-                <th>Prodi</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for a in alumni %}
-            <tr>
-                <td>{{a['nama']}}</td>
-                <td>{{a['tahun']}}</td>
-                <td>{{a['prodi']}}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    <div class="d-flex justify-content-end mt-3">
-        <a href="/" class="btn btn-secondary">Kembali ke Dashboard</a>
+    <div class="d-flex gap-2">
+        <a href="/jalankan_pelacakan" class="btn btn-success" id="btnMulai"
+           onclick="return confirm('Mulai pelacakan alumni yang belum pernah dilacak?')">
+            <i class="fas fa-satellite-dish me-1"></i> Mulai Pelacakan
+        </a>
+        <a href="/stop_pelacakan" class="btn btn-outline-danger" id="btnStop" style="display:none;"
+           onclick="return confirm('Hentikan pelacakan?')">
+            <i class="fas fa-stop me-1"></i> Stop
+        </a>
     </div>
 </div>
+
+<!-- Progress Card (muncul saat running) -->
+<div class="card mb-4" id="progressCard" style="display:none;">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="fas fa-spinner fa-spin me-2 text-primary"></i>Pelacakan Berjalan...</h6>
+        <span id="progressPct" class="badge bg-primary">0%</span>
+    </div>
+    <div class="card-body">
+        <div class="progress mb-3" style="height:10px;">
+            <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated"
+                 style="width:0%"></div>
+        </div>
+        <div class="row g-3 mb-3">
+            <div class="col-4 text-center">
+                <div class="fw-bold text-primary" id="statProcessed">0</div>
+                <small class="text-muted">Diproses</small>
+            </div>
+            <div class="col-4 text-center">
+                <div class="fw-bold text-success" id="statBerhasil">0</div>
+                <small class="text-muted">Berhasil</small>
+            </div>
+            <div class="col-4 text-center">
+                <div class="fw-bold text-muted" id="statTotal">0</div>
+                <small class="text-muted">Total</small>
+            </div>
+        </div>
+        <div class="p-2 rounded mb-3" style="background:#f8fafc;font-size:0.8rem;">
+            <span class="text-muted">Sedang: </span>
+            <strong id="currentName">—</strong>
+        </div>
+        <!-- Log box -->
+        <div class="log-box" id="logBox" style="max-height:160px;"></div>
+    </div>
+</div>
+
+<!-- Info card -->
+<div class="alert alert-info mb-4" style="font-size:0.85rem;">
+    <i class="fas fa-info-circle me-1"></i>
+    Pelacakan menggunakan <strong>DuckDuckGo</strong> + <strong>Grok AI</strong>. 
+    Berjalan di background — browser bisa ditutup. Jangan sleep device selama proses berlangsung.
+</div>
+
+<!-- Daftar Alumni -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">👨‍🎓 Data Alumni</h6>
+        <div class="d-flex gap-2 align-items-center">
+            <span class="badge bg-primary">{{ alumni | length }} alumni</span>
+            {% if alumni %}
+            <a href="/hapus_semua_alumni" class="btn btn-sm btn-outline-danger"
+               onclick="return confirm('Hapus SEMUA data alumni?')">
+                <i class="fas fa-trash me-1"></i>Hapus Semua
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        {% if alumni %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Nama</th>
+                        <th>Tahun</th>
+                        <th>Prodi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in alumni %}
+                    <tr>
+                        <td class="text-muted">{{ loop.index }}</td>
+                        <td><strong>{{ a['nama'] }}</strong></td>
+                        <td>{{ a['tahun'] or '—' }}</td>
+                        <td>{{ a['prodi'] or '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted">
+            <i class="fas fa-users mb-2 d-block" style="font-size:1.5rem;opacity:0.3;"></i>
+            Belum ada data alumni. <a href="/import">Import dari CSV</a> atau tambah di Dashboard.
+        </div>
+        {% endif %}
+        <div class="d-flex justify-content-end mt-3">
+            <a href="/" class="btn btn-sm btn-outline-secondary">Kembali ke Dashboard</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let pollTimer = null;
+
+function startPolling() {
+    if (pollTimer) return;
+    pollTimer = setInterval(fetchStatus, 3000);
+    fetchStatus();
+}
+
+function stopPolling() {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+async function fetchStatus() {
+    try {
+        const r = await fetch('/api/tracking_status');
+        const s = await r.json();
+
+        const running = s.running;
+        const done    = s.done;
+
+        document.getElementById('progressCard').style.display = (running || done) ? 'block' : 'none';
+        document.getElementById('btnMulai').style.display = running ? 'none' : '';
+        document.getElementById('btnStop').style.display  = running ? '' : 'none';
+
+        const total     = s.total || 0;
+        const processed = s.processed || 0;
+        const pct       = total > 0 ? Math.round(processed / total * 100) : 0;
+
+        document.getElementById('progressBar').style.width = pct + '%';
+        document.getElementById('progressPct').textContent = pct + '%';
+        document.getElementById('statProcessed').textContent = processed;
+        document.getElementById('statBerhasil').textContent  = s.berhasil || 0;
+        document.getElementById('statTotal').textContent     = total;
+        document.getElementById('currentName').textContent   = s.current || '—';
+
+        // Update log
+        const logBox = document.getElementById('logBox');
+        if (s.log && s.log.length) {
+            logBox.innerHTML = s.log.map(l => {
+                const cls = l.startsWith('✓') ? 'log-ok' : l.startsWith('✗') ? 'log-err' : 'log-info';
+                return `<div class="${cls}">${l}</div>`;
+            }).join('');
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        if (done && !running) {
+            stopPolling();
+            document.querySelector('.card-header .fa-spinner')?.classList.remove('fa-spin');
+        }
+    } catch(e) {}
+}
+
+// Cek status saat halaman dibuka
+window.addEventListener('load', async () => {
+    const r = await fetch('/api/tracking_status').catch(() => null);
+    if (!r) return;
+    const s = await r.json();
+    if (s.running) startPolling();
+    else if (s.done || s.processed > 0) fetchStatus();
+});
+</script>
 {% endblock %}

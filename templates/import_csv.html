@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+{% block title %}Import Alumni dari CSV{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">Import Alumni dari CSV</h4>
+        <p class="text-muted mb-0" style="font-size:0.875rem;">
+            Upload file CSV — sistem otomatis mendeteksi kolom nama, tahun lulus, dan program studi.
+            <strong>Data alumni lama akan diganti.</strong>
+        </p>
+    </div>
+</div>
+
+<!-- Upload Section -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h6 class="mb-0">📁 Upload File CSV</h6>
+    </div>
+    <div class="card-body">
+        <form id="uploadForm" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label for="csvFile" class="form-label">Pilih file CSV</label>
+                <input type="file" class="form-control" id="csvFile" name="file" accept=".csv" required>
+                <small class="text-muted">Format: CSV, maksimal 100MB</small>
+            </div>
+
+            <!-- Column Detection Preview -->
+            <div id="columnPreview" class="alert alert-info" style="display:none;">
+                <h6 class="mb-2">🔍 Kolom terdeteksi:</h6>
+                <ul id="columnDetails" class="mb-2 small"></ul>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="changeFileBtn">Ganti File</button>
+            </div>
+
+            <div class="d-grid gap-2">
+                <button type="button" class="btn btn-outline-primary" id="detectBtn">
+                    <i class="fas fa-search me-1"></i> Preview Kolom
+                </button>
+                <button type="submit" class="btn btn-primary" id="importBtn" style="display:none;">
+                    <i class="fas fa-upload me-1"></i> Mulai Import
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Progress Section -->
+<div id="progressSection" class="card mb-4" style="display:none;">
+    <div class="card-header"><h6 class="mb-0">⏳ Progress Upload</h6></div>
+    <div class="card-body">
+        <div class="progress mb-2" style="height:10px;">
+            <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated"
+                 role="progressbar" style="width:0%">0%</div>
+        </div>
+        <p id="progressMessage" class="text-muted small mb-0">Mempersiapkan upload...</p>
+    </div>
+</div>
+
+<!-- Result Section -->
+<div id="resultSection" class="card mb-4" style="display:none;">
+    <div class="card-header" id="resultHeader"><h6 class="mb-0">Hasil Import</h6></div>
+    <div class="card-body" id="resultBody"></div>
+</div>
+
+<!-- Status Database -->
+<div class="card">
+    <div class="card-header"><h6 class="mb-0">📈 Status Database</h6></div>
+    <div class="card-body">
+        <div class="d-flex align-items-center gap-3">
+            <div>
+                <div class="text-muted small">Alumni dalam database</div>
+                <div class="fw-bold fs-4 text-primary" id="totalAlumni">{{ total_alumni }}</div>
+            </div>
+            <a href="/tracking" class="btn btn-success ms-auto">
+                <i class="fas fa-satellite-dish me-1"></i> Mulai Pelacakan
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+// File selection handler
+document.getElementById('csvFile').addEventListener('change', function() {
+    document.getElementById('detectBtn').style.display = '';
+    document.getElementById('columnPreview').style.display = 'none';
+    document.getElementById('importBtn').style.display = 'none';
+});
+
+// Detect columns
+document.getElementById('detectBtn').addEventListener('click', async function(e) {
+    e.preventDefault();
+    const fileInput = document.getElementById('csvFile');
+    
+    if (!fileInput.files.length) {
+        alert('Pilih file CSV terlebih dahulu');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    
+    try {
+        document.getElementById('detectBtn').disabled = true;
+        document.getElementById('detectBtn').innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Mendeteksi...';
+        
+        const response = await fetch('/api/detect_csv', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'detected') {
+            // Show column preview
+            const columnDetails = document.getElementById('columnDetails');
+            columnDetails.innerHTML = '';
+            
+            const cols = data.columns;
+            if (cols.nama) columnDetails.innerHTML += `<li>✓ <strong>Nama Alumni:</strong> "${cols.nama}"</li>`;
+            if (cols.tahun_masuk) columnDetails.innerHTML += `<li>✓ <strong>Tahun:</strong> "${cols.tahun_masuk}"</li>`;
+            if (cols.program_studi) columnDetails.innerHTML += `<li>✓ <strong>Program Studi:</strong> "${cols.program_studi}"</li>`;
+            if (cols.nim) columnDetails.innerHTML += `<li>ℹ <strong>NIM:</strong> "${cols.nim}"</li>`;
+            if (cols.fakultas) columnDetails.innerHTML += `<li>ℹ <strong>Fakultas:</strong> "${cols.fakultas}"</li>`;
+            if (!cols.nama) columnDetails.innerHTML += `<li class="text-danger">✗ <strong>Nama tidak terdeteksi!</strong> — pastikan ada kolom nama di CSV</li>`;
+            if (!cols.tahun_masuk) columnDetails.innerHTML += `<li class="text-warning">⚠ Kolom tahun tidak terdeteksi (opsional)</li>`;
+            if (!cols.program_studi) columnDetails.innerHTML += `<li class="text-warning">⚠ Kolom program studi tidak terdeteksi (opsional)</li>`;
+            
+            document.getElementById('columnPreview').style.display = '';
+            document.getElementById('importBtn').style.display = '';
+            document.getElementById('detectBtn').style.display = 'none';
+        } else {
+            alert('Error: ' + (data.message || 'Gagal mendeteksi kolom'));
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    } finally {
+        document.getElementById('detectBtn').disabled = false;
+        document.getElementById('detectBtn').innerHTML = '<i class="fas fa-search"></i> Preview & Detect Kolom';
+    }
+});
+
+// Change file button
+document.getElementById('changeFileBtn').addEventListener('click', function() {
+    document.getElementById('csvFile').value = '';
+    document.getElementById('columnPreview').style.display = 'none';
+    document.getElementById('importBtn').style.display = 'none';
+    document.getElementById('detectBtn').style.display = '';
+});
+
+// Upload Form Handler
+document.getElementById('uploadForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const fileInput = document.getElementById('csvFile');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        alert('Pilih file CSV terlebih dahulu');
+        return;
+    }
+    
+    // Show progress section
+    document.getElementById('progressSection').style.display = 'block';
+    document.getElementById('resultSection').style.display = 'none';
+    
+    // Prepare FormData
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    // Simulate progress
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+        if (progress < 90) {
+            progress += Math.random() * 30;
+            if (progress > 90) progress = 90;
+            updateProgress(progress, `Mengupload... ${Math.round(progress)}%`);
+        }
+    }, 300);
+    
+    // Upload
+    fetch('/api/import_csv', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        clearInterval(progressInterval);
+        
+        if (data.status === 'success') {
+            updateProgress(100, 'Upload selesai!');
+            showSuccessResult(data);
+            fileInput.value = '';
+            
+            // Update database info
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+        } else {
+            updateProgress(0, 'Gagal!');
+            showErrorResult(data);
+        }
+    })
+    .catch(error => {
+        clearInterval(progressInterval);
+        updateProgress(0, 'Error: ' + error.message);
+        showErrorResult({status: 'error', message: error.message});
+    });
+});
+
+function updateProgress(percentage, message) {
+    const progressBar = document.getElementById('progressBar');
+    const progressMessage = document.getElementById('progressMessage');
+    
+    progressBar.style.width = percentage + '%';
+    progressBar.textContent = Math.round(percentage) + '%';
+    progressMessage.textContent = message;
+}
+
+function showSuccessResult(data) {
+    const resultSection = document.getElementById('resultSection');
+    const resultBody = document.getElementById('resultBody');
+    const resultHeader = document.getElementById('resultHeader');
+    
+    resultHeader.className = 'card-header bg-success text-white';
+    resultHeader.innerHTML = '<h5 class="mb-0">✅ Import Berhasil - Database Diganti!</h5>';
+    
+    let html = `
+        <div class="alert alert-success mb-3">
+            <strong>Diimport:</strong> ${data.imported} alumni baru<br>
+            <small class="text-muted">Data lama sudah dihapus dan diganti</small>
+        </div>
+    `;
+    
+    if (data.errors > 0) {
+        html += `
+            <div class="alert alert-warning">
+                <strong>Errors:</strong> ${data.errors}
+        `;
+        if (data.error_details && data.error_details.length > 0) {
+            html += '<ul class="mb-0">';
+            data.error_details.forEach(err => {
+                html += `<li><small>${err}</small></li>`;
+            });
+            html += '</ul>';
+        }
+        html += '</div>';
+    }
+    
+    html += `
+        <div class="alert alert-info">
+            <strong>Informasi:</strong> 
+            <ul class="mb-0" style="margin-top: 8px;">
+                <li>Jumlah data: <strong>${data.imported}</strong> alumni</li>
+                <li>Status: <strong>Database telah diganti dengan data baru</strong></li>
+            </ul>
+        </div>
+    `;
+    
+    html += `
+        <div class="alert alert-secondary">
+            <strong>Langkah Selanjutnya:</strong> Gunakan fitur "Cari Alumni" atau "Lacak Alumni" untuk memulai.
+        </div>
+        <div class="mt-3">
+            <a href="/" class="btn btn-primary">
+                <i class="fas fa-home"></i> Kembali ke Halaman Utama
+            </a>
+        </div>
+    `;
+    
+    resultBody.innerHTML = html;
+    resultSection.style.display = 'block';
+}
+
+function showErrorResult(data) {
+    const resultSection = document.getElementById('resultSection');
+    const resultBody = document.getElementById('resultBody');
+    const resultHeader = document.getElementById('resultHeader');
+    
+    resultHeader.className = 'card-header bg-danger text-white';
+    resultHeader.innerHTML = '<h5 class="mb-0">❌ Import Gagal</h5>';
+    
+    let html = `
+        <div class="alert alert-danger">
+            <strong>Error:</strong> ${data.message || 'Terjadi kesalahan saat import'}
+        </div>
+        <div class="mt-3">
+            <button class="btn btn-secondary" onclick="location.reload()">
+                <i class="fas fa-redo"></i> Coba Lagi
+            </button>
+        </div>
+    `;
+    
+    resultBody.innerHTML = html;
+    resultSection.style.display = 'block';
+}
+
+// Load database info on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateDatabaseInfo();
+});
+
+function updateDatabaseInfo() {
+    const totalAlumni = document.getElementById('totalAlumni');
+    if (totalAlumni) {
+        totalAlumni.textContent = '{{ total_alumni }}' || '0';
+    }
+}
+</script>
+
+{% endblock %}

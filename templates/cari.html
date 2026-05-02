@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Header -->
+<div class="card mb-4 border-primary">
+    <div class="card-header">
+        <h5 class="mb-0">🔍 Cari Alumni dari Database CSV</h5>
+    </div>
+    <div class="card-body">
+        <p class="text-muted mb-0">Pencarian fuzzy matching dari {{ total_alumni }} data alumni yang sudah diimport</p>
+    </div>
+</div>
+
+<!-- Search Form -->
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">📝 Form Pencarian</h5>
+    </div>
+    <div class="card-body">
+        <form id="searchForm">
+            <div class="mb-3">
+                <label class="form-label"><strong>Nama Alumni *</strong></label>
+                <input type="text" class="form-control form-control-lg" id="namaInput" 
+                       placeholder="Contoh: Adi Pratama" required>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Tahun Lulus (optional)</label>
+                    <input type="number" class="form-control" id="tahunInput" 
+                           placeholder="2020" min="1990" max="2030">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Program Studi (optional)</label>
+                    <input type="text" class="form-control" id="prodiInput" 
+                           placeholder="Sistem Informasi">
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg w-100">
+                <i class="fas fa-search"></i> Cari Alumni
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Search Results -->
+<div id="resultsSection" style="display: none;">
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">✅ Hasil Pencarian</h5>
+        </div>
+        <div class="card-body">
+            <div id="matchesContainer"></div>
+        </div>
+    </div>
+</div>
+
+<!-- No Results -->
+<div id="noResultsSection" style="display: none;">
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <strong>⚠️ Tidak Ada Kecocokan</strong>
+        <p class="mb-0">Alumni dengan nama "<strong id="searchedName"></strong>" tidak ditemukan di database CSV.</p>
+        <small class="text-muted">Coba dengan nama yang berbeda atau gunakan nama sebagian.</small>
+    </div>
+</div>
+
+<!-- Loading Spinner -->
+<div id="loadingSection" style="display: none;">
+    <div class="text-center">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-3">🔍 Mencari di database alumni...</p>
+    </div>
+</div>
+
+<script>
+document.getElementById('searchForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const nama = document.getElementById('namaInput').value.trim();
+    const tahun = document.getElementById('tahunInput').value;
+    const prodi = document.getElementById('prodiInput').value;
+    
+    if (!nama) {
+        alert('Nama alumni harus diisi!');
+        return;
+    }
+    
+    // Show loading
+    document.getElementById('loadingSection').style.display = 'block';
+    document.getElementById('resultsSection').style.display = 'none';
+    document.getElementById('noResultsSection').style.display = 'none';
+    
+    try {
+        const response = await fetch('/cari_alumni_dari_csv', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                nama: nama,
+                tahun: tahun,
+                prodi: prodi
+            })
+        });
+        
+        const data = await response.json();
+        document.getElementById('loadingSection').style.display = 'none';
+        
+        if (data.status === 'success' && data.matches.length > 0) {
+            // Show results
+            document.getElementById('resultsSection').style.display = 'block';
+            displayMatches(data.matches);
+        } else {
+            // Show no results
+            document.getElementById('noResultsSection').style.display = 'block';
+            document.getElementById('searchedName').textContent = nama;
+        }
+    } catch (error) {
+        document.getElementById('loadingSection').style.display = 'none';
+        alert('Error: ' + error.message);
+    }
+});
+
+function displayMatches(matches) {
+    const container = document.getElementById('matchesContainer');
+    container.innerHTML = '';
+    
+    matches.forEach((match, idx) => {
+        const matchHtml = `
+            <div class="card mb-3 border-start border-primary border-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h5 class="mb-1">${match.nama}</h5>
+                            <small class="text-muted">Match #${idx + 1}</small>
+                        </div>
+                        <span class="badge bg-success">${match.similarity}% Match</span>
+                    </div>
+                    
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="form-label">NIM</div>
+                            <div class="fw-medium">${match.nim || '-'}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-label">Tahun Masuk</div>
+                            <div class="fw-medium">${match.tahun_masuk || '-'}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-label">Tanggal Lulus</div>
+                            <div class="fw-medium">${match.tanggal_lulus || '-'}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-label">Fakultas</div>
+                            <div class="fw-medium">${match.fakultas || '-'}</div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-label">Program Studi</div>
+                            <div class="fw-medium">${match.program_studi || '-'}</div>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    <small class="text-muted d-block">
+                        💾 Data dari: <strong>CSV Database</strong> | 
+                        🔍 Similarity: <strong>${match.similarity}%</strong>
+                    </small>
+                </div>
+            </div>
+        `;
+        container.innerHTML += matchHtml;
+    });
+    
+    const totalText = matches.length === 1 ? '1 kecocokan ditemukan' : `${matches.length} kecocokan ditemukan`;
+    const header = document.querySelector('.card-header.bg-success');
+    header.innerHTML = `<h5 class="mb-0">✅ Hasil Pencarian (${totalText})</h5>`;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: sistem-pelacakan-alumni
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --workers 1 --threads 4 --timeout 120
+    envVars:
+      - key: XAI_API_KEY
+        sync: false
+      - key: PYTHON_VERSION
+        value: 3.11.0

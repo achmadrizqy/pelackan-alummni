@@ -1,34 +1,331 @@
 {% extends "base.html" %}
+{% block title %}Dashboard — Sistem Pelacakan Alumni{% endblock %}
 
 {% block content %}
-<h2>Dashboard</h2>
-<p>Prototype sistem pelacakan alumni dari berbagai sumber publik.</p>
-
-<div class="row mt-4">
-
-    <div class="col-md-4">
-        <div class="card p-3">
-            <h5>Kelola Data Alumni</h5>
-            <p>Menambahkan dan mengelola data alumni.</p>
-            <a href="/alumni" class="btn btn-primary">Masuk</a>
+{%- macro _render_hasil(h) %}
+<div class="card mb-3 border">
+    <div class="card-header d-flex flex-wrap gap-2 align-items-center py-2">
+        <strong>{{ h['nama'] | title }}</strong>
+        {% if h['status'] == 'Teridentifikasi' %}
+        <span class="badge badge-found">{{ h['status'] }}</span>
+        {% elif h['status'] == 'Perlu Verifikasi' %}
+        <span class="badge badge-partial">{{ h['status'] }}</span>
+        {% else %}
+        <span class="badge badge-notfound">{{ h['status'] }}</span>
+        {% endif %}
+        <span class="badge bg-secondary">{{ (h['confidence'] * 100) | int }}%</span>
+        {% if h['jenis_pekerjaan'] == 'PNS' %}<span class="badge badge-pns">PNS</span>
+        {% elif h['jenis_pekerjaan'] == 'Swasta' %}<span class="badge badge-swasta">Swasta</span>
+        {% elif h['jenis_pekerjaan'] == 'Wirausaha' %}<span class="badge badge-wirausaha">Wirausaha</span>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4 mb-2">
+                <div class="fw-semibold text-primary mb-1" style="font-size:0.8rem;">📱 Sosial Media</div>
+                <ul class="list-unstyled small mb-0">
+                    <li><strong>LinkedIn:</strong> {% if h['linkedin'] %}<a href="{{ h['linkedin'] }}" target="_blank">Lihat</a>{% else %}<span class="text-muted">—</span>{% endif %}</li>
+                    <li><strong>Instagram:</strong> {% if h['instagram'] %}<a href="{{ h['instagram'] }}" target="_blank">Lihat</a>{% else %}<span class="text-muted">—</span>{% endif %}</li>
+                    <li><strong>Facebook:</strong> {% if h['facebook'] %}<a href="{{ h['facebook'] }}" target="_blank">Lihat</a>{% else %}<span class="text-muted">—</span>{% endif %}</li>
+                    <li><strong>TikTok:</strong> {% if h['tiktok'] %}<a href="{{ h['tiktok'] }}" target="_blank">Lihat</a>{% else %}<span class="text-muted">—</span>{% endif %}</li>
+                </ul>
+            </div>
+            <div class="col-md-4 mb-2">
+                <div class="fw-semibold text-success mb-1" style="font-size:0.8rem;">📞 Kontak</div>
+                <ul class="list-unstyled small mb-0">
+                    <li><strong>Email:</strong> {{ h['email'] or '—' }}</li>
+                    <li><strong>No HP:</strong> {{ h['no_hp'] or '—' }}</li>
+                </ul>
+            </div>
+            <div class="col-md-4 mb-2">
+                <div class="fw-semibold text-danger mb-1" style="font-size:0.8rem;">🏢 Pekerjaan</div>
+                <ul class="list-unstyled small mb-0">
+                    <li><strong>Posisi:</strong> {{ h['posisi'] or '—' }}</li>
+                    <li><strong>Tempat:</strong> {{ h['tempat_bekerja'] or '—' }}</li>
+                    <li><strong>Alamat:</strong> {{ h['alamat_bekerja'] or '—' }}</li>
+                </ul>
+            </div>
+        </div>
+        <div class="border-top pt-1 mt-1">
+            <small class="text-muted"><strong>📡 Sumber:</strong> {{ h['sumber'] or '—' }}</small>
         </div>
     </div>
-
-    <div class="col-md-4">
-        <div class="card p-3">
-            <h5>Jalankan Pelacakan</h5>
-            <p>Menjalankan proses pencarian alumni.</p>
-            <a href="/tracking" class="btn btn-success">Jalankan</a>
-        </div>
-    </div>
-
-    <div class="col-md-4">
-        <div class="card p-3">
-            <h5>Lihat Hasil</h5>
-            <p>Menampilkan hasil pelacakan alumni.</p>
-            <a href="/hasil" class="btn btn-warning">Lihat</a>
-        </div>
-    </div>
-
 </div>
+{%- endmacro %}
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">Dashboard</h4>
+        <p class="text-muted mb-0" style="font-size:0.875rem;">Sistem Pelacakan Alumni menggunakan Grok AI</p>
+    </div>
+</div>
+
+<!-- STAT CARDS -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-value text-primary">{{ total }}</div>
+            <div class="stat-label">Total Alumni</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-value" style="color:#16a34a;">{{ teridentifikasi }}</div>
+            <div class="stat-label">Teridentifikasi</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-value" style="color:#d97706;">{{ perlu_verifikasi }}</div>
+            <div class="stat-label">Perlu Verifikasi</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-value" style="color:#dc2626;">{{ belum_ditemukan }}</div>
+            <div class="stat-label">Belum Ditemukan</div>
+        </div>
+    </div>
+</div>
+
+<!-- QUICK ACTIONS -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <a href="/cari" class="text-decoration-none">
+            <div class="card h-100 p-3 d-flex flex-row align-items-center gap-3" style="cursor:pointer;transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='0 4px 12px rgba(37,99,235,0.15)'" onmouseout="this.style.boxShadow=''">
+                <div style="width:42px;height:42px;border-radius:10px;background:#eff6ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas fa-search" style="color:#2563eb;"></i>
+                </div>
+                <div>
+                    <div class="fw-semibold" style="font-size:0.875rem;">Cari Alumni</div>
+                    <div class="text-muted" style="font-size:0.75rem;">Fuzzy search dari database</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="/import" class="text-decoration-none">
+            <div class="card h-100 p-3 d-flex flex-row align-items-center gap-3" style="cursor:pointer;transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='0 4px 12px rgba(37,99,235,0.15)'" onmouseout="this.style.boxShadow=''">
+                <div style="width:42px;height:42px;border-radius:10px;background:#f0fdf4;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas fa-file-csv" style="color:#16a34a;"></i>
+                </div>
+                <div>
+                    <div class="fw-semibold" style="font-size:0.875rem;">Import CSV</div>
+                    <div class="text-muted" style="font-size:0.75rem;">Upload data alumni dari file</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="/tracking" class="text-decoration-none">
+            <div class="card h-100 p-3 d-flex flex-row align-items-center gap-3" style="cursor:pointer;transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='0 4px 12px rgba(37,99,235,0.15)'" onmouseout="this.style.boxShadow=''">
+                <div style="width:42px;height:42px;border-radius:10px;background:#fef3c7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas fa-satellite-dish" style="color:#d97706;"></i>
+                </div>
+                <div>
+                    <div class="fw-semibold" style="font-size:0.875rem;">Tracking</div>
+                    <div class="text-muted" style="font-size:0.75rem;">Lacak alumni via Grok AI</div>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- TAMBAH ALUMNI -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h6>👥 Tambah Alumni</h6>
+    </div>
+    <div class="card-body">
+        {% if session.get('user_id') %}
+        <form method="POST" action="/tambah_alumni" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">Nama Lengkap</label>
+                <input type="text" name="nama" class="form-control" placeholder="contoh: Budi Santoso" required>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Tahun Lulus</label>
+                <input type="text" name="tahun" class="form-control" placeholder="contoh: 2020">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Program Studi</label>
+                <input type="text" name="prodi" class="form-control" placeholder="contoh: Teknik Informatika">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label d-block">&nbsp;</label>
+                <button type="submit" class="btn btn-primary w-100">+ Tambah</button>
+            </div>
+        </form>
+        {% else %}
+        <p class="text-muted mb-0"><a href="/login">Login</a> untuk menambahkan data alumni.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- DAFTAR ALUMNI -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6>👨‍🎓 Daftar Alumni</h6>
+        <div class="d-flex gap-2 align-items-center">
+            <span class="badge bg-primary">{{ alumni | length }} alumni</span>
+            <a href="/import" class="btn btn-sm btn-outline-primary">
+                <i class="fas fa-file-csv me-1"></i>Import CSV
+            </a>
+            {% if session.get('user_id') and alumni | length > 0 %}
+            <a href="/hapus_semua_alumni" class="btn btn-sm btn-outline-danger"
+               onclick="return confirm('Hapus SEMUA data alumni? Tindakan ini tidak bisa dibatalkan.')">
+                <i class="fas fa-trash me-1"></i>Hapus Semua
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Nama</th>
+                        <th>Tahun</th>
+                        <th>Prodi</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in alumni %}
+                    <tr>
+                        <td class="text-muted">{{ loop.index }}</td>
+                        <td><strong>{{ a['nama'] }}</strong></td>
+                        <td>{{ a['tahun'] or '—' }}</td>
+                        <td>{{ a['prodi'] or '—' }}</td>
+                        <td>
+                            {% if session.get('user_id') %}
+                            <a href="/hapus_alumni/{{ a['id'] }}" class="btn btn-sm btn-outline-danger"
+                               onclick="return confirm('Yakin hapus alumni ini?')">Hapus</a>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">
+                            <i class="fas fa-users mb-2 d-block" style="font-size:1.5rem;opacity:0.3;"></i>
+                            Belum ada data alumni. <a href="/import">Import dari CSV</a> atau tambah manual di atas.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- HASIL PELACAKAN -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6>📊 Hasil Pelacakan Alumni</h6>
+        <div class="d-flex gap-2 align-items-center">
+            {% if hasil | length > 0 %}
+            <a href="/export_csv" class="btn btn-sm btn-success">
+                <i class="fas fa-download me-1"></i>Export CSV
+            </a>
+            {% endif %}
+            {% if session.get('user_id') and hasil | length > 0 %}
+            <a href="/reset_hasil" class="btn btn-warning btn-sm"
+               onclick="return confirm('Yakin reset semua hasil?')">↻ Reset</a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        {% if hasil | length > 0 %}
+
+        {# Pisahkan berdasarkan status #}
+        {% set teridentifikasi_list = hasil | selectattr('status', 'equalto', 'Teridentifikasi') | list %}
+        {% set verifikasi_list      = hasil | selectattr('status', 'equalto', 'Perlu Verifikasi') | list %}
+        {% set belum_list           = hasil | rejectattr('status', 'equalto', 'Teridentifikasi') | rejectattr('status', 'equalto', 'Perlu Verifikasi') | list %}
+
+        <!-- Summary badges -->
+        <div class="d-flex gap-2 mb-3 flex-wrap">
+            <span class="badge badge-found" style="font-size:0.8rem;padding:0.4em 0.8em;">
+                ✓ Teridentifikasi: {{ teridentifikasi_list | length }}
+            </span>
+            <span class="badge badge-partial" style="font-size:0.8rem;padding:0.4em 0.8em;">
+                ⚠ Perlu Verifikasi: {{ verifikasi_list | length }}
+            </span>
+            <span class="badge badge-notfound" style="font-size:0.8rem;padding:0.4em 0.8em;">
+                ✗ Belum Ditemukan: {{ belum_list | length }}
+            </span>
+        </div>
+
+        <!-- Tabs -->
+        <ul class="nav nav-tabs mb-3" id="hasilTab">
+            <li class="nav-item">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-found">
+                    Teridentifikasi <span class="badge bg-success ms-1">{{ teridentifikasi_list | length }}</span>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-partial">
+                    Perlu Verifikasi <span class="badge bg-warning text-dark ms-1">{{ verifikasi_list | length }}</span>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-notfound">
+                    Belum Ditemukan <span class="badge bg-danger ms-1">{{ belum_list | length }}</span>
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- Tab Teridentifikasi -->
+            <div class="tab-pane fade show active" id="tab-found">
+                {% if teridentifikasi_list %}
+                    {% for h in teridentifikasi_list %}{{ _render_hasil(h) }}{% endfor %}
+                {% else %}
+                <p class="text-muted text-center py-3">Belum ada alumni yang teridentifikasi.</p>
+                {% endif %}
+            </div>
+
+            <!-- Tab Perlu Verifikasi -->
+            <div class="tab-pane fade" id="tab-partial">
+                {% if verifikasi_list %}
+                    {% for h in verifikasi_list %}{{ _render_hasil(h) }}{% endfor %}
+                {% else %}
+                <p class="text-muted text-center py-3">Tidak ada data perlu verifikasi.</p>
+                {% endif %}
+            </div>
+
+            <!-- Tab Belum Ditemukan -->
+            <div class="tab-pane fade" id="tab-notfound">
+                {% if belum_list %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0" style="font-size:0.82rem;">
+                        <thead><tr><th>#</th><th>Nama</th><th>Status</th><th>Sumber</th></tr></thead>
+                        <tbody>
+                        {% for h in belum_list %}
+                        <tr>
+                            <td class="text-muted">{{ loop.index }}</td>
+                            <td><strong>{{ h['nama'] | title }}</strong></td>
+                            <td><span class="badge badge-notfound">{{ h['status'] or 'Belum Ditemukan' }}</span></td>
+                            <td class="text-muted">{{ h['sumber'] or '—' }}</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-3">Semua alumni berhasil ditemukan data.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        {% else %}
+        <div class="text-center py-4 text-muted">
+            <i class="fas fa-satellite-dish mb-2 d-block" style="font-size:1.5rem;opacity:0.3;"></i>
+            <p class="mb-0">Belum ada hasil pelacakan. Tambahkan alumni lalu klik <strong>Jalankan Pelacakan</strong>.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
 {% endblock %}
